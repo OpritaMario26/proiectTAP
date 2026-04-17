@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -48,6 +49,19 @@ async function main() {
       stock: 25,
       imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9',
       brand: 'Samsung',
+    },
+  });
+
+  // Create test user
+  const passwordHash = await bcrypt.hash('mariogamer22', 10);
+  await prisma.user.upsert({
+    where: { email: 'opritamario26@gmail.com' },
+    update: {},
+    create: {
+      email: 'opritamario26@gmail.com',
+      fullName: 'Oprita Mario',
+      passwordHash,
+      role: 'ADMIN',
     },
   });
 }

@@ -6,11 +6,13 @@ import { z } from 'zod';
 
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
+import { authenticate, AuthRequest } from '../lib/auth.js';
+import { sendVerificationEmail, sendResetPasswordEmail } from '../lib/email.js';
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  fullName: z.string().min(2),
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase, one uppercase, and one number'),
+  fullName: z.string().min(2).max(100),
 });
 
 const loginSchema = z.object({
@@ -28,7 +30,17 @@ const requestResetSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  newPassword: z.string().min(8),
+  newPassword: z.string().min(8).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase, one uppercase, and one number'),
+});
+
+const updateProfileSchema = z.object({
+  email: z.string().email().max(255),
+  fullName: z.string().min(2).max(100),
+});
+
+const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase, one uppercase, and one number'),
 });
 
 const createAccessToken = (userId: number, role: string) =>
@@ -66,11 +78,26 @@ authRouter.post('/register', async (req, res) => {
       email: parsed.data.email,
       fullName: parsed.data.fullName,
       passwordHash,
+      emailVerified: false,
     },
   });
 
+  const verificationToken = randomBytes(24).toString('hex');
+  const verificationTokenHash = hashToken(verificationToken);
+  const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerificationToken: verificationTokenHash,
+      emailVerificationExpiresAt: verificationTokenExpiresAt,
+    },
+  });
+
+  await sendVerificationEmail(user.email, verificationToken);
+
   return res.status(201).json({
-    message: 'User created',
+    message: 'User created; verification email sent',
     user: {
       id: user.id,
       email: user.email,
@@ -102,6 +129,10 @@ authRouter.post('/login', async (req, res) => {
   );
   if (!passwordValid) {
     return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  if (!user.emailVerified) {
+    return res.status(403).json({ message: 'Email not verified' });
   }
 
   const accessToken = createAccessToken(user.id, user.role);
@@ -203,9 +234,10 @@ authRouter.post('/request-reset', async (req, res) => {
     data: { resetTokenHash, resetTokenExpiresAt },
   });
 
+  await sendResetPasswordEmail(user.email, resetToken);
+
   return res.status(200).json({
-    message: 'Reset token generated',
-    resetToken,
+    message: 'If email exists, reset token generated and sent',
   });
 });
 
@@ -244,4 +276,117 @@ authRouter.post('/reset-password', async (req, res) => {
   });
 
   return res.status(200).json({ message: 'Password reset successful' });
+});
+
+authRouter.get('/verify-email', async (req, res) => {
+  const token = String(req.query.token || '');
+  if (!token) {
+    return res.status(400).json({ message: 'Token required' });
+  }
+
+  const tokenHash = hashToken(token);
+  const user = await prisma.user.findFirst({
+    where: {
+      emailVerificationToken: tokenHash,
+      emailVerificationExpiresAt: { gt: new Date() },
+    },
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired token' });
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiresAt: null,
+    },
+  });
+
+  return res.status(200).json({ message: 'Email verified successfully' });
+});
+
+authRouter.get('/profile', authenticate, async (req: AuthRequest, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, email: true, fullName: true, role: true, createdAt: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  return res.status(200).json({ user });
+});
+
+authRouter.put('/profile', authenticate, async (req: AuthRequest, res) => {
+  const parsed = updateProfileSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Invalid payload',
+      issues: parsed.error.issues,
+    });
+  }
+
+  const { email, fullName } = parsed.data;
+  const userId = req.user!.id;
+
+  // Check if email is taken by another user
+  if (email !== req.user!.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already in use' });
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { email, fullName },
+    select: { id: true, email: true, fullName: true, role: true },
+  });
+
+  return res.status(200).json({
+    message: 'Profile updated',
+    user: updatedUser,
+  });
+});
+
+authRouter.put('/change-password', authenticate, async (req: AuthRequest, res) => {
+  const parsed = changePasswordSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: 'Invalid payload',
+      issues: parsed.error.issues,
+    });
+  }
+
+  const { oldPassword, newPassword } = parsed.data;
+  const userId = req.user!.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const passwordValid = await bcrypt.compare(oldPassword, user.passwordHash);
+  if (!passwordValid) {
+    return res.status(400).json({ message: 'Old password is incorrect' });
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: newPasswordHash },
+  });
+
+  return res.status(200).json({ message: 'Password changed successfully' });
 });

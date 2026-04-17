@@ -7,8 +7,12 @@ import rateLimit from 'express-rate-limit';
 
 import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
+import { cartRouter } from './routes/cart.js';
+import { categoriesRouter } from './routes/categories.js';
 import { healthRouter } from './routes/health.js';
+import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
+import { usersRouter } from './routes/users.js';
 
 export const app = express();
 
@@ -31,6 +35,10 @@ app.use(
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/users', usersRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found' });
