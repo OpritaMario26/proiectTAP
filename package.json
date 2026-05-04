@@ -4,12 +4,12 @@
   "private": true,
   "description": "E-commerce MVP (React + Node.js + PostgreSQL)",
   "scripts": {
-    "dev:frontend": "npm --prefix frontend run dev",
-    "dev:backend": "npm --prefix backend run dev",
-    "build": "npm --prefix frontend run build && npm --prefix backend run build",
-    "db:generate": "npm --prefix backend run db:generate",
-    "db:migrate": "npm --prefix backend run db:migrate",
-    "db:seed": "npm --prefix backend run db:seed"
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "db:generate": "npm --prefix server run db:generate",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed": "npm --prefix server run db:seed"
   },
   "repository": {
     "type": "git",
@@ -21,5 +21,12 @@
   "bugs": {
     "url": "https://github.com/OpritaMario26/proiectTAP/issues"
   },
-  "homepage": "https://github.com/OpritaMario26/proiectTAP#readme"
+  "homepage": "https://github.com/OpritaMario26/proiectTAP#readme",
+  "devDependencies": {
+    "prisma": "^6.16.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2",
+    "bcrypt": "^6.0.0"
+  }
 }

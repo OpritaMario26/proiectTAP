@@ -2,6 +2,11 @@
 
 Implementare initiala pentru proiectul de magazin online (React + Node.js + PostgreSQL).
 
+npm run build 
+npm --prefix server run test 
+npm --prefix client run test 
+npm run db:seed
+
 ## Ce este implementat acum
 
 - Frontend React (Vite + TypeScript)
