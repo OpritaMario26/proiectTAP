@@ -42,13 +42,13 @@ npm run db:seed
 Din radacina proiectului:
 
 ```bash
-npm run dev:backend
+npm run dev:server
 ```
 
 In alt terminal:
 
 ```bash
-npm run dev:frontend
+npm run dev:client
 ```
 
 Pentru Prisma:
