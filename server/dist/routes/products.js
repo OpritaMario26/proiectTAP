@@ -38,6 +38,7 @@ productsRouter.get('/', async (req, res) => {
                 OR: [
                     { name: { contains: search, mode: 'insensitive' } },
                     { brand: { contains: search, mode: 'insensitive' } },
+                    { category: { name: { contains: search, mode: 'insensitive' } } },
                 ],
             }
             : {}),
@@ -180,9 +181,15 @@ productsRouter.put('/:id', authenticate, requireAdmin, async (req, res) => {
             return res.status(400).json({ message: 'Category not found' });
         }
     }
+    const updateData = { ...parsed.data };
+    if (parsed.data.categoryId !== undefined) {
+        const categoryIdValue = parsed.data.categoryId;
+        delete updateData.categoryId;
+        updateData.category = { connect: { id: categoryIdValue } };
+    }
     const updatedProduct = await prisma.product.update({
         where: { id: productId },
-        data: parsed.data,
+        data: updateData,
         include: { category: true },
     });
     return res.status(200).json({
@@ -202,8 +209,35 @@ productsRouter.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     if (!existingProduct) {
         return res.status(404).json({ message: 'Product not found' });
     }
-    await prisma.product.delete({
-        where: { id: productId },
+    const blockedOrderItem = await prisma.orderItem.findFirst({
+        where: {
+            productId,
+            order: {
+                status: {
+                    in: ['PENDING', 'CONFIRMED', 'SHIPPED'],
+                },
+            },
+        },
     });
+    if (blockedOrderItem) {
+        return res.status(409).json({
+            message: 'Produsul nu poate fi sters pentru ca exista comenzi active care il contin. Stergerea este permisa doar dupa finalizarea sau anularea acestor comenzi.',
+        });
+    }
+    await prisma.$transaction([
+        prisma.orderItem.deleteMany({
+            where: {
+                productId,
+                order: {
+                    status: {
+                        in: ['DELIVERED', 'CANCELED'],
+                    },
+                },
+            },
+        }),
+        prisma.product.delete({
+            where: { id: productId },
+        }),
+    ]);
     return res.status(200).json({ message: 'Product deleted' });
 });

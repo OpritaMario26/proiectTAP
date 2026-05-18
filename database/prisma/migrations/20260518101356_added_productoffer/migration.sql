@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PRODUCTS" ADD COLUMN     "is_on_offer" BOOLEAN NOT NULL DEFAULT false;

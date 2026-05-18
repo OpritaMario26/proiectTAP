@@ -59,8 +59,14 @@ export function AdminCategoriesPage() {
 
   return (
     <section className='page'>
-      <h1>Admin categorii</h1>
-      <form className='form' onSubmit={handleSubmit((data) => createMutation.mutate(data))}>
+      <div className='admin-header'>
+        <div>
+          <h1>Admin categorii</h1>
+          <p className='lead'>Gestioneaza categoriile magazinului.</p>
+        </div>
+      </div>
+
+      <form className='form admin-category-form' onSubmit={handleSubmit((data) => createMutation.mutate(data))}>
         <label>
           Nume categorie
           <input type='text' {...register('name')} />
@@ -76,17 +82,42 @@ export function AdminCategoriesPage() {
         </button>
       </form>
 
-      <div className='orders-list'>
-        {categoriesQuery.data?.map((category) => (
-          <article className='order-card' key={category.id}>
-            <h3>{category.name}</h3>
-            <p>{category.slug}</p>
-            <button type='button' onClick={() => deleteMutation.mutate(category.id)}>
-              Sterge
-            </button>
-          </article>
-        ))}
-      </div>
+      <section className='category-section'>
+        <div className='section-header'>
+          <div>
+            <h2>Categorii existente</h2>
+          </div>
+          <span className='category-count'>Total: {categoriesQuery.data?.length ?? 0}</span>
+        </div>
+
+        {categoriesQuery.isLoading ? (
+          <p>Se incarca categoriile...</p>
+        ) : categoriesQuery.isError ? (
+          <p>Nu am putut incarca categoriile.</p>
+        ) : categoriesQuery.data && categoriesQuery.data.length > 0 ? (
+          <div className='category-grid'>
+            {categoriesQuery.data.map((category) => (
+              <article className='category-card' key={category.id}>
+                <div className='category-card-content'>
+                  <span className='category-label'>Categorie</span>
+                  <h3>{category.name}</h3>
+                  <p className='category-slug'>{category.slug}</p>
+                </div>
+                <button
+                  type='button'
+                  className='button button-secondary'
+                  onClick={() => deleteMutation.mutate(category.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  Sterge
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p>Nu exista categorii in baza de date.</p>
+        )}
+      </section>
     </section>
   );
 }

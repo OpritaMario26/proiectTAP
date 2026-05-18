@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -7,6 +7,7 @@ import { http } from './api/http';
 import { clearSession } from './store/authSlice';
 import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
+import { AdminOrdersPage } from './pages/AdminOrdersPage';
 import { AccountPage } from './pages/AccountPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -35,6 +36,9 @@ function App() {
   const dispatch = useAppDispatch();
   const accessToken = useAppSelector((state) => state.auth.accessToken);
   const user = useAppSelector((state) => state.auth.user);
+  const navigate = useNavigate();
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -60,16 +64,26 @@ function App() {
           </Link>
           <span className='brand-badge'>Electrocasnice si IT</span>
         </div>
-        <div className='search-row'>
+        <form
+          className='search-row'
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = searchQuery.trim();
+            if (q) navigate(`/products?search=${encodeURIComponent(q)}`);
+            else navigate('/products');
+          }}
+        >
           <input
             type='text'
             placeholder='Cauta laptopuri, telefoane, TV, electrocasnice...'
             aria-label='Cauta produse'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button className='button search-button' type='button'>
+          <button className='button search-button' type='submit'>
             Cauta
           </button>
-        </div>
+        </form>
       </header>
 
       <section className='promo-strip'>
@@ -84,10 +98,19 @@ function App() {
           <Link to='/products'>Produse</Link>
           <Link to='/cart'>Cos</Link>
           {user ? <Link to='/orders'>Comenzile mele</Link> : null}
-          {!user ? <Link to='/register'>Creare cont</Link> : null}
-          {!user ? <Link to='/login'>Login</Link> : null}
+          {!user ? (
+            <Link className='button button-secondary' to='/register'>
+              Creare cont
+            </Link>
+          ) : null}
+          {!user ? (
+            <Link className='button' to='/login'>
+              Autentificare
+            </Link>
+          ) : null}
           {user?.role === 'ADMIN' ? <Link to='/admin/products'>Admin Produse</Link> : null}
           {user?.role === 'ADMIN' ? <Link to='/admin/categories'>Admin Categorii</Link> : null}
+          {user?.role === 'ADMIN' ? <Link to='/admin/orders'>Admin Comenzi</Link> : null}
         </nav>
         <div className='user-panel'>
           {user ? (
@@ -164,6 +187,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminCategoriesPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path='/admin/orders'
+            element={
+              <AdminRoute>
+                <AdminOrdersPage />
               </AdminRoute>
             }
           />

@@ -59,7 +59,7 @@ export function CartPage() {
     );
   }
 
-  if (cartQuery.isPending) {
+  if (cartQuery.isLoading) {
     return <p>Se incarca cosul...</p>;
   }
   if (cartQuery.isError || !cartQuery.data) {

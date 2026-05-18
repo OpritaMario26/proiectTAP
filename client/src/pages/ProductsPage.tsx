@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { http } from '../api/http';
@@ -41,6 +41,11 @@ export function ProductsPage() {
   const search = searchParams.get('search') || '';
   const sort = searchParams.get('sort') || 'createdAt_desc';
   const categoryId = searchParams.get('categoryId') || '';
+  const [searchInput, setSearchInput] = useState(search);
+
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
 
   const productsQuery = useQuery({
     queryKey: ['products', search, sort, categoryId],
@@ -76,9 +81,14 @@ export function ProductsPage() {
   });
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const val = event.target.value;
+    setSearchInput(event.target.value);
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSearchParams((prev) => {
-      if (val) prev.set('search', val);
+      const trimmed = searchInput.trim();
+      if (trimmed) prev.set('search', trimmed);
       else prev.delete('search');
       return prev;
     });
@@ -113,13 +123,16 @@ export function ProductsPage() {
   return (
     <section className='page'>
       <h1>Produse</h1>
-      <div className='catalog-toolbar'>
+      <form className='catalog-toolbar' onSubmit={handleSearchSubmit}>
         <input
           type='text'
-          placeholder='Cauta dupa nume sau brand'
-          value={search}
+          placeholder='Cauta dupa nume, brand sau categorie'
+          value={searchInput}
           onChange={handleSearchChange}
         />
+        <button className='button button-secondary' type='submit'>
+          Cauta
+        </button>
         <select value={categoryId} onChange={handleCategoryChange}>
           <option value=''>Toate categoriile</option>
           {categoriesQuery.data?.map((cat) => (
@@ -135,12 +148,11 @@ export function ProductsPage() {
           <option value='name_asc'>Nume A-Z</option>
           <option value='name_desc'>Nume Z-A</option>
         </select>
-      </div>
+      </form>
       <p className='lead'>Total produse: {productsQuery.data.pagination.total}</p>
       <div className='products-grid'>
         {productsQuery.data.data.map((product) => (
           <article className='card' key={product.id}>
-            <span className='offer-badge'>OFERTA</span>
             <img src={product.imageUrl} alt={product.name} />
             <Link to={`/products/${product.slug}`}>
               <h3>{product.name}</h3>
@@ -148,9 +160,6 @@ export function ProductsPage() {
             <p>{product.brand}</p>
             <p>{product.category.name}</p>
             <p className='stock'>Stoc: {product.stock}</p>
-            <p className='old-price'>
-              {(Number(product.price) * 1.15).toFixed(2)} RON
-            </p>
             <strong>{Number(product.price).toFixed(2)} RON</strong>
             <button
               className='button card-button'
