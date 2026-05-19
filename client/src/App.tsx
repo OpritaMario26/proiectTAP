@@ -8,6 +8,7 @@ import { clearSession } from './store/authSlice';
 import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
 import { AdminOrdersPage } from './pages/AdminOrdersPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AccountPage } from './pages/AccountPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
@@ -111,6 +112,7 @@ function App() {
           {user?.role === 'ADMIN' ? <Link to='/admin/products'>Admin Produse</Link> : null}
           {user?.role === 'ADMIN' ? <Link to='/admin/categories'>Admin Categorii</Link> : null}
           {user?.role === 'ADMIN' ? <Link to='/admin/orders'>Admin Comenzi</Link> : null}
+          {user?.role === 'ADMIN' ? <Link to='/admin/users'>Admin Utilizatori</Link> : null}
         </nav>
         <div className='user-panel'>
           {user ? (
@@ -195,6 +197,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminOrdersPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path='/admin/users'
+            element={
+              <AdminRoute>
+                <AdminUsersPage />
               </AdminRoute>
             }
           />

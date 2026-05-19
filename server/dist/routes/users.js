@@ -77,14 +77,19 @@ usersRouter.delete('/:id', async (req, res) => {
     }
     const existingUser = await prisma.user.findUnique({
         where: { id: userId },
-        include: { orders: true },
     });
     if (!existingUser) {
         return res.status(404).json({ message: 'User not found' });
     }
-    // Check if user has active orders (not canceled)
-    const activeOrders = existingUser.orders.filter(order => order.status !== 'CANCELED');
-    if (activeOrders.length > 0) {
+    const activeOrdersCount = await prisma.order.count({
+        where: {
+            userId,
+            status: {
+                in: ['PENDING', 'CONFIRMED'],
+            },
+        },
+    });
+    if (activeOrdersCount > 0) {
         return res.status(409).json({
             message: 'Cannot delete user with active orders',
         });
